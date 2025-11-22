@@ -1,0 +1,162 @@
+const { initialized } = require('forever');
+const http = require('http');
+const Koa = require('koa');
+const koaBody = require('koa-body').default;
+const { text } = require('stream/consumers');
+const app = new Koa();
+
+// тикет 
+class Ticket {
+  constructor(id, name, status, created){
+    this.id = id;
+    this.name = name;
+    this.status = status;
+    this.created = created;
+  }
+}
+
+// тикет полная информация
+class TicketFull { 
+  static #tickets = [];
+  static #nextId = 0;
+
+  constructor(id, name, decription, status, created){
+    this.id = id;
+    this.name = name;
+    this.decription = decription;
+    this.status = status;
+    this.created = created;
+  }
+  
+  static initializeTicket(){
+    if (this.#tickets.length === 0){
+      this.#tickets.push(
+        new TicketFull(this.#nextId++, 'Install new version', 'Install Windows 10, drivers for printer, MS Office, save documents and mediafiles', false, new Date()
+      )),
+         new TicketFull(this.#nextId++, 'Replace cartridge', 'Replace cartridge for printer Samsung in cabinet #404', true, new Date())
+    }
+  }
+
+  static allTickets(){
+    return this.#tickets.map(ticket => new Ticket(ticket.id, ticket.name, ticket.status, ticket.created))
+  }
+
+  static findTicket(id){
+    const result = this.#tickets.find(ticket => ticket.id == id);
+    return result;
+  }
+
+  static createTicket(name, decription){
+    const ticket = new TicketFull(
+      this.#nextId++,
+      name,
+      decription,
+      false,
+      new Date());
+    this.#tickets.push(ticket);
+    return ticket;  
+  }
+
+  static updateTicket(id, name, decription){
+    const ticket = this.findTicket(id);
+    if (ticket){
+      ticket.name = name;
+      ticket.decription = decription;
+    }
+    return ticket;
+  }
+
+  static deleteTicket(id){
+    const index = this.#tickets.findIndex(ticket => ticket.id === id)
+    if (index !== -1){
+      const deleted = this.#tickets.splice(index, 1);
+      return deleted.length > 0 ? deleted[0] : null;
+    }
+    return null;
+  }
+}
+
+TicketFull.initializeTicket(); // предзаполенные значения 
+
+app.use(koaBody({
+  text: true,
+  urlencoded: true,
+  multipart: true,
+  json: true
+}));
+
+app.use(async (ctx, next)=> {
+  const origin = ctx.request.get('Origin');
+  if(!origin){
+    return await next();
+  }
+  const headers = {'Access-Control-Allow-Origin' : '*'} //обработка не опт запросов
+  if(ctx.request.method!=='OPTIONS'){
+    ctx.response.set({...headers});
+    try{
+      return await next();
+    } catch (e) {
+      e.headers =  {...e.headers, ...headers};
+      throw e;
+    }  
+  }
+  if(ctx.request.get('Access-Control-Request-Method')){ // проверка запрашиваемых заголовков
+    ctx.response.set({
+      ...headers,
+      'Access-Control-Allow-Method': 'GET, POST, PUT, DELETE, PATCH',
+    });
+    if(ctx.request.get('Access-Control-Request-Headers')){
+      ctx.response.set('Access-Control-Allow-Headers', 
+      ctx.request.get('Access-Control-Request-Headers'));
+    }
+    ctx.response.status = 204;
+  }
+})
+
+app.use(async ctx => {
+   const params = new URLSearchParams(ctx.request.querystring);
+    const method = params.get('method');
+    const id = params.get('id');
+    const { body } = ctx.request;
+
+    switch(method){
+      case 'allTickets': 
+        ctx.response.body = TicketFull.allTickets();
+        return;
+       
+      case 'ticketFindId': 
+        if(id){
+          ctx.response.body = TicketFull.findIndex(parseInt(id));
+          return;
+        }
+
+      case 'createTicket':
+        const newTicket = TicketFull.createTicket(body.title, body.description);
+        ctx.response.body = newTicket;
+        return;
+      
+      case 'editTicket':
+        const updateTicket = TicketFull.updateTicket(body.id, body.title, body.decription);
+        ctx.response.body = updateTicket;
+        return;
+
+      case 'deleteTicket':
+        const deleteTicket = TicketFull.deleteTicket(parseInt(body.id));
+        ctx.response.body = {deleteTicket: deleteTicket !== null};
+        return;
+
+      default:
+        ctx.response.status = 404;
+        return;
+
+
+    }
+
+})
+
+const port = process.env.PORT || 7071; // есть либо в окружении или предлагаем 7070
+const host = process.env.HOST || 'localhost'; // тоже самое
+
+const server = http.createServer(app.callback()).listen(port, host, () => {
+  console.log(`Server running on http://${host}:${port}`);
+});
