@@ -1,8 +1,8 @@
-const { initialized } = require('forever');
+// const { initialized } = require('forever');
 const http = require('http');
 const Koa = require('koa');
 const koaBody = require('koa-body').default;
-const { text } = require('stream/consumers');
+// const { text } = require('stream/consumers');
 const app = new Koa();
 
 // тикет 
@@ -120,43 +120,65 @@ app.use(async ctx => {
     const { body } = ctx.request;
 
     switch(method){
-      case 'allTickets': 
+      case 'allTickets': {
         ctx.response.body = TicketFull.allTickets();
-        return;
+        return; 
+      }
        
-      case 'ticketFindId': 
-        if(id){
-          ctx.response.body = TicketFull.findIndex(parseInt(id));
-          return;
+      case 'ticketById': {
+         if (!id) {
+            ctx.response.status = 400;
+            ctx.response.body = { error: 'ID parameter is required' };
+            return;
         }
-
-      case 'createTicket':
+        
+        const ticketId = parseInt(id);
+        const ticket = TicketFull.findTicket(ticketId);
+        
+        if (ticket) {
+            ctx.response.body = ticket;
+        } else {
+            ctx.response.status = 404;
+            ctx.response.body = { error: 'Ticket not found' };
+        }
+        return;
+        }
+        
+      case 'createTicket': {
         const newTicket = TicketFull.createTicket(body.title, body.description);
         ctx.response.body = newTicket;
         return;
-      
-      case 'editTicket':
+        }
+
+      case 'editTicket': {
         const updateTicket = TicketFull.updateTicket(body.id, body.title, body.decription);
         ctx.response.body = updateTicket;
         return;
+      }
 
-      case 'deleteTicket':
+      case 'deleteTicket': {
         const deleteTicket = TicketFull.deleteTicket(parseInt(body.id));
         ctx.response.body = {deleteTicket: deleteTicket !== null};
         return;
+      }
 
-      default:
+      default: {
         ctx.response.status = 404;
+        ctx.response.body = { error: 'Method not found' };
         return;
-
-
+      }
     }
 
 })
 
-const port = process.env.PORT || 7071; // есть либо в окружении или предлагаем 7070
-const host = process.env.HOST || 'localhost'; // тоже самое
+const port = process.env.PORT || 7070; // есть либо в окружении или предлагаем 7070
+const host = '0.0.0.0'; //; // тоже самое
 
 const server = http.createServer(app.callback()).listen(port, host, () => {
   console.log(`Server running on http://${host}:${port}`);
+});
+
+// Обработка ошибок
+server.on('error', (error) => {
+  console.error('Server error:', error);
 });
