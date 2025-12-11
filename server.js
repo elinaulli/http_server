@@ -20,62 +20,75 @@ class TicketFull {
   static #tickets = [];
   static #nextId = 0;
 
-  constructor(id, name, decription, status, created){
+  constructor(id, name, description, status, created) { // исправлено
     this.id = id;
     this.name = name;
-    this.decription = decription;
+    this.description = description; // исправлено
     this.status = status;
     this.created = created;
   }
   
-  static initializeTicket(){
-    if (this.#tickets.length === 0){
+  static initializeTicket() {
+    if (this.#tickets.length === 0) {
       this.#tickets.push(
-        new TicketFull(this.#nextId++, 'Install new version', 'Install Windows 10, drivers for printer, MS Office, save documents and mediafiles', false, new Date()
-      )),
-         new TicketFull(this.#nextId++, 'Replace cartridge', 'Replace cartridge for printer Samsung in cabinet #404', true, new Date())
+        new TicketFull(
+          this.#nextId++, 
+          'Install new version', 
+          'Install Windows 10, drivers for printer, MS Office, save documents and mediafiles', 
+          false, 
+          new Date()
+        ),
+        new TicketFull(
+          this.#nextId++, 
+          'Replace cartridge', 
+          'Replace cartridge for printer Samsung in cabinet #404', 
+          true, 
+          new Date()
+        )
+      );
     }
   }
 
-  static allTickets(){
-    return this.#tickets.map(ticket => new Ticket(ticket.id, ticket.name, ticket.status, ticket.created))
+  static allTickets() {
+    return this.#tickets.map(ticket => 
+      new Ticket(ticket.id, ticket.name, ticket.status, ticket.created)
+    );
   }
 
-  static findTicket(id){
-    const result = this.#tickets.find(ticket => ticket.id == id);
+  static findTicket(id) {
+    const result = this.#tickets.find(ticket => ticket.id === id);
     return result;
   }
 
-  static createTicket(name, decription){
-    const ticket = new TicketFull(
+  static createTicket(name, description) {
       this.#nextId++,
       name,
-      decription,
+      description,
       false,
-      new Date());
+      new Date()
+    );
     this.#tickets.push(ticket);
     return ticket;  
   }
 
-  static updateTicket(id, name, decription){
+  static updateTicket(id, name, description) {
     const ticket = this.findTicket(id);
-    if (ticket){
+    if (ticket) {
       ticket.name = name;
-      ticket.decription = decription;
+      ticket.description = description;
     }
     return ticket;
   }
 
-  static deleteTicket(id){
-    const index = this.#tickets.findIndex(ticket => ticket.id === id)
-    if (index !== -1){
+  static deleteTicket(id) {
+    const index = this.#tickets.findIndex(ticket => ticket.id === id);
+    if (index !== -1) {
       const deleted = this.#tickets.splice(index, 1);
       return deleted.length > 0 ? deleted[0] : null;
     }
     return null;
   }
 }
-
 TicketFull.initializeTicket(); // предзаполенные значения 
 
 app.use(koaBody({
@@ -103,7 +116,7 @@ app.use(async (ctx, next)=> {
   if(ctx.request.get('Access-Control-Request-Method')){ // проверка запрашиваемых заголовков
     ctx.response.set({
       ...headers,
-      'Access-Control-Allow-Method': 'GET, POST, PUT, DELETE, PATCH',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH',
     });
     if(ctx.request.get('Access-Control-Request-Headers')){
       ctx.response.set('Access-Control-Allow-Headers', 
@@ -119,14 +132,14 @@ app.use(async ctx => {
     const id = params.get('id');
     const { body } = ctx.request;
 
-    switch(method){
-      case 'allTickets': {
+    switch(method) {
+    case 'allTickets': {
         ctx.response.body = TicketFull.allTickets();
         return; 
-      }
-       
-      case 'ticketById': {
-         if (!id) {
+    }
+     
+    case 'ticketById': {
+        if (!id) {
             ctx.response.status = 400;
             ctx.response.body = { error: 'ID parameter is required' };
             return;
@@ -142,32 +155,61 @@ app.use(async ctx => {
             ctx.response.body = { error: 'Ticket not found' };
         }
         return;
+    }
+    
+    case 'createTicket': {
+        if (!body || !body.title) {
+            ctx.response.status = 400;
+            ctx.response.body = { error: 'Title is required' };
+            return;
         }
         
-      case 'createTicket': {
-        const newTicket = TicketFull.createTicket(body.title, body.description);
+        const newTicket = TicketFull.createTicket(
+            body.title, 
+            body.description || ''
+        );
         ctx.response.body = newTicket;
         return;
+    }
+
+    case 'editTicket': {
+        if (!body || !body.id || !body.title) {
+            ctx.response.status = 400;
+            ctx.response.body = { error: 'ID and title are required' };
+            return;
         }
-
-      case 'editTicket': {
-        const updateTicket = TicketFull.updateTicket(body.id, body.title, body.decription);
-        ctx.response.body = updateTicket;
+        
+        const updateTicket = TicketFull.updateTicket(
+            parseInt(body.id), 
+            body.title, 
+            body.description || ''
+        );
+        
+        ctx.response.body = updateTicket || { error: 'Ticket not found' };
         return;
-      }
+    }
 
-      case 'deleteTicket': {
+    case 'deleteTicket': {
+        if (!body || !body.id) {
+            ctx.response.status = 400;
+            ctx.response.body = { error: 'ID is required' };
+            return;
+        }
+        
         const deleteTicket = TicketFull.deleteTicket(parseInt(body.id));
-        ctx.response.body = {deleteTicket: deleteTicket !== null};
+        ctx.response.body = { 
+            deleted: deleteTicket !== null,
+            ticket: deleteTicket
+        };
         return;
-      }
+    }
 
-      default: {
+    default: {
         ctx.response.status = 404;
         ctx.response.body = { error: 'Method not found' };
         return;
-      }
     }
+}
 
 })
 
