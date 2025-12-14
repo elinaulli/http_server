@@ -1,13 +1,10 @@
-// const { initialized } = require('forever');
 const http = require('http');
 const Koa = require('koa');
 const koaBody = require('koa-body').default;
-// const { text } = require('stream/consumers');
 const app = new Koa();
 
-// тикет 
 class Ticket {
-  constructor(id, name, status, created){
+  constructor(id, name, status, created) {
     this.id = id;
     this.name = name;
     this.status = status;
@@ -15,15 +12,14 @@ class Ticket {
   }
 }
 
-// тикет полная информация
 class TicketFull { 
   static #tickets = [];
   static #nextId = 0;
 
-  constructor(id, name, description, status, created) { // исправлено
+  constructor(id, name, description, status, created) {
     this.id = id;
     this.name = name;
-    this.description = description; // исправлено
+    this.description = description;
     this.status = status;
     this.created = created;
   }
@@ -61,6 +57,7 @@ class TicketFull {
   }
 
   static createTicket(name, description) {
+    const ticket = new TicketFull(
       this.#nextId++,
       name,
       description,
@@ -89,7 +86,8 @@ class TicketFull {
     return null;
   }
 }
-TicketFull.initializeTicket(); // предзаполенные значения 
+
+TicketFull.initializeTicket();
 
 app.use(koaBody({
   text: true,
@@ -98,130 +96,132 @@ app.use(koaBody({
   json: true
 }));
 
-app.use(async (ctx, next)=> {
+app.use(async (ctx, next) => {
   const origin = ctx.request.get('Origin');
-  if(!origin){
+  if (!origin) {
     return await next();
   }
-  const headers = {'Access-Control-Allow-Origin' : '*'} //обработка не опт запросов
-  if(ctx.request.method!=='OPTIONS'){
+  
+  const headers = {'Access-Control-Allow-Origin': '*'};
+  
+  if (ctx.request.method !== 'OPTIONS') {
     ctx.response.set({...headers});
-    try{
+    try {
       return await next();
     } catch (e) {
-      e.headers =  {...e.headers, ...headers};
+      e.headers = {...e.headers, ...headers};
       throw e;
     }  
   }
-  if(ctx.request.get('Access-Control-Request-Method')){ // проверка запрашиваемых заголовков
+  
+  if (ctx.request.get('Access-Control-Request-Method')) {
     ctx.response.set({
       ...headers,
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH', // ✅ исправлено
     });
-    if(ctx.request.get('Access-Control-Request-Headers')){
+    
+    if (ctx.request.get('Access-Control-Request-Headers')) {
       ctx.response.set('Access-Control-Allow-Headers', 
-      ctx.request.get('Access-Control-Request-Headers'));
+        ctx.request.get('Access-Control-Request-Headers')
+      );
     }
     ctx.response.status = 204;
   }
-})
+});
 
 app.use(async ctx => {
-   const params = new URLSearchParams(ctx.request.querystring);
-    const method = params.get('method');
-    const id = params.get('id');
-    const { body } = ctx.request;
+  const params = new URLSearchParams(ctx.request.querystring);
+  const method = params.get('method');
+  const id = params.get('id');
+  const { body } = ctx.request;
 
-    switch(method) {
+  switch (method) {
     case 'allTickets': {
-        ctx.response.body = TicketFull.allTickets();
-        return; 
+      ctx.response.body = TicketFull.allTickets();
+      return; 
     }
      
     case 'ticketById': {
-        if (!id) {
-            ctx.response.status = 400;
-            ctx.response.body = { error: 'ID parameter is required' };
-            return;
-        }
-        
-        const ticketId = parseInt(id);
-        const ticket = TicketFull.findTicket(ticketId);
-        
-        if (ticket) {
-            ctx.response.body = ticket;
-        } else {
-            ctx.response.status = 404;
-            ctx.response.body = { error: 'Ticket not found' };
-        }
+      if (!id) {
+        ctx.response.status = 400;
+        ctx.response.body = { error: 'ID parameter is required' };
         return;
+      }
+      
+      const ticketId = parseInt(id);
+      const ticket = TicketFull.findTicket(ticketId);
+      
+      if (ticket) {
+        ctx.response.body = ticket;
+      } else {
+        ctx.response.status = 404;
+        ctx.response.body = { error: 'Ticket not found' };
+      }
+      return;
     }
     
     case 'createTicket': {
-        if (!body || !body.title) {
-            ctx.response.status = 400;
-            ctx.response.body = { error: 'Title is required' };
-            return;
-        }
-        
-        const newTicket = TicketFull.createTicket(
-            body.title, 
-            body.description || ''
-        );
-        ctx.response.body = newTicket;
+      if (!body || !body.title) {
+        ctx.response.status = 400;
+        ctx.response.body = { error: 'Title is required' };
         return;
+      }
+      
+      const newTicket = TicketFull.createTicket(
+        body.title, 
+        body.description || ''
+      );
+      ctx.response.body = newTicket;
+      return;
     }
 
     case 'editTicket': {
-        if (!body || !body.id || !body.title) {
-            ctx.response.status = 400;
-            ctx.response.body = { error: 'ID and title are required' };
-            return;
-        }
-        
-        const updateTicket = TicketFull.updateTicket(
-            parseInt(body.id), 
-            body.title, 
-            body.description || ''
-        );
-        
-        ctx.response.body = updateTicket || { error: 'Ticket not found' };
+      if (!body || !body.id || !body.title) {
+        ctx.response.status = 400;
+        ctx.response.body = { error: 'ID and title are required' };
         return;
+      }
+      
+      const updateTicket = TicketFull.updateTicket(
+        parseInt(body.id), 
+        body.title, 
+        body.description || ''
+      );
+      
+      ctx.response.body = updateTicket || { error: 'Ticket not found' };
+      return;
     }
 
     case 'deleteTicket': {
-        if (!body || !body.id) {
-            ctx.response.status = 400;
-            ctx.response.body = { error: 'ID is required' };
-            return;
-        }
-        
-        const deleteTicket = TicketFull.deleteTicket(parseInt(body.id));
-        ctx.response.body = { 
-            deleted: deleteTicket !== null,
-            ticket: deleteTicket
-        };
+      if (!body || !body.id) {
+        ctx.response.status = 400;
+        ctx.response.body = { error: 'ID is required' };
         return;
+      }
+      
+      const deleteTicket = TicketFull.deleteTicket(parseInt(body.id));
+      ctx.response.body = { 
+        deleted: deleteTicket !== null,
+        ticket: deleteTicket
+      };
+      return;
     }
 
     default: {
-        ctx.response.status = 404;
-        ctx.response.body = { error: 'Method not found' };
-        return;
+      ctx.response.status = 404;
+      ctx.response.body = { error: 'Method not found' };
+      return;
     }
-}
-
-})
-
-const port = process.env.PORT || 7070; // есть либо в окружении или предлагаем 7070
-const host = '0.0.0.0'; //; // тоже самое
-
-const server = http.createServer(app.callback()).listen(port, host, () => {
-  console.log(`Server running on http://${host}:${port}`);
+  }
 });
 
-// Обработка ошибок
+const port = process.env.PORT || 7070;
+const host = '0.0.0.0';
+
+const server = http.createServer(app.callback()).listen(port, host, () => {
+  console.log(`✅ Server running on http://${host}:${port}`);
+});
+
 server.on('error', (error) => {
   console.error('Server error:', error);
 });
-
