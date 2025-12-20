@@ -20,7 +20,13 @@ class TicketFull {
     this.id = id;
     this.name = name;
     this.description = description;
+
+  if (typeof status === 'string') {
+    const lowerStatus = status.toLowerCase();
+    this.status = (lowerStatus === 'true' || lowerStatus === '1');
+  } else {
     this.status = Boolean(status);
+  }
     this.created = created;
   }
   
@@ -57,12 +63,11 @@ class TicketFull {
   }
 
   static createTicket(name, description, status = false) {
-    const finalStatus = Boolean(status);
     const ticket = new TicketFull(
       this.#nextId++,
       name,
       description,
-      finalStatus,
+      status,
       new Date()
     );
     this.#tickets.push(ticket);
@@ -74,10 +79,17 @@ class TicketFull {
     if (ticket) {
       ticket.name = name;
       ticket.description = description;
+    if (status !== undefined) {
+      // Используем ту же логику что и в конструкторе
+      if (typeof status === 'string') {
+        const lowerStatus = status.toLowerCase();
+        ticket.status = (lowerStatus === 'true' || lowerStatus === '1');
+      } else {
+        ticket.status = Boolean(status);
+      }
+      console.log(`updateTicket: id=${id}, status обновлен на ${ticket.status}`);
     }
-     if (status !== undefined) {
-      ticket.status = Boolean(status);
-    }
+  }
     return ticket;
   }
 
@@ -170,23 +182,11 @@ app.use(async ctx => {
         ctx.response.body = { error: 'Title is required' };
         return;
       }
-      console.log('Получен статус:', body.status, 'тип:', typeof body.status);
   
-  // Обрабатываем статус
-  let statusValue = false;
-  if (body.status !== undefined) {
-    if (typeof body.status === 'string') {
-      statusValue = body.status.toLowerCase() === 'true' || body.status === '1';
-    } else {
-      statusValue = Boolean(body.status);
-    }
-  }
-  
-  console.log('Используем статус:', statusValue);
       const newTicket = TicketFull.createTicket(
         body.title, 
         body.description || '',
-        body.status !== undefined ? body.status : false
+        body.status
       );
       ctx.response.body = newTicket;
       return;
