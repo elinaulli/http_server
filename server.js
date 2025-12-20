@@ -56,23 +56,26 @@ class TicketFull {
     return result;
   }
 
-  static createTicket(name, description) {
+  static createTicket(name, description, status = false) {
     const ticket = new TicketFull(
       this.#nextId++,
       name,
       description,
-      false,
+      status,
       new Date()
     );
     this.#tickets.push(ticket);
     return ticket;  
   }
 
-  static updateTicket(id, name, description) {
+  static updateTicket(id, name, description, status) {
     const ticket = this.findTicket(id);
     if (ticket) {
       ticket.name = name;
       ticket.description = description;
+    }
+     if (status !== undefined) {
+      ticket.status = Boolean(status);
     }
     return ticket;
   }
@@ -169,7 +172,8 @@ app.use(async ctx => {
       
       const newTicket = TicketFull.createTicket(
         body.title, 
-        body.description || ''
+        body.description || '',
+        body.status || false
       );
       ctx.response.body = newTicket;
       return;
@@ -187,7 +191,12 @@ app.use(async ctx => {
         body.title, 
         body.description || ''
       );
-      
+       const updateTicket = TicketFull.updateTicket(
+      parseInt(body.id), 
+      body.title, 
+      body.description || '',
+      body.status
+      );
       ctx.response.body = updateTicket || { error: 'Ticket not found' };
       return;
     }
