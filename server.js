@@ -169,7 +169,19 @@ app.use(async ctx => {
         ctx.response.body = { error: 'Title is required' };
         return;
       }
-      
+      console.log('Получен статус:', body.status, 'тип:', typeof body.status);
+  
+  // Обрабатываем статус
+  let statusValue = false;
+  if (body.status !== undefined) {
+    if (typeof body.status === 'string') {
+      statusValue = body.status.toLowerCase() === 'true' || body.status === '1';
+    } else {
+      statusValue = Boolean(body.status);
+    }
+  }
+  
+  console.log('Используем статус:', statusValue);
       const newTicket = TicketFull.createTicket(
         body.title, 
         body.description || '',
