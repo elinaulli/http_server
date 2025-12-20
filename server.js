@@ -187,11 +187,6 @@ app.use(async ctx => {
       }
       
       const updateTicket = TicketFull.updateTicket(
-        parseInt(body.id), 
-        body.title, 
-        body.description || ''
-      );
-       const updateTicket = TicketFull.updateTicket(
       parseInt(body.id), 
       body.title, 
       body.description || '',
