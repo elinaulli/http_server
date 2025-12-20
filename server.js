@@ -7,7 +7,7 @@ class Ticket {
   constructor(id, name, status, created) {
     this.id = id;
     this.name = name;
-    this.status = status;
+    this.status = Boolen(status);
     this.created = created;
   }
 }
@@ -62,7 +62,7 @@ class TicketFull {
       this.#nextId++,
       name,
       description,
-      status,
+      finalStatus,
       new Date()
     );
     this.#tickets.push(ticket);
