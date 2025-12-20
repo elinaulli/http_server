@@ -20,7 +20,7 @@ class TicketFull {
     this.id = id;
     this.name = name;
     this.description = description;
-    this.status = Boolen(status);
+    this.status = Boolean(status);
     this.created = created;
   }
   
