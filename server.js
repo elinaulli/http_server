@@ -57,6 +57,7 @@ class TicketFull {
   }
 
   static createTicket(name, description, status = false) {
+    const finalStatus = Boolean(status);
     const ticket = new TicketFull(
       this.#nextId++,
       name,
