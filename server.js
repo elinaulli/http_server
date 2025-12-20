@@ -173,7 +173,7 @@ app.use(async ctx => {
       const newTicket = TicketFull.createTicket(
         body.title, 
         body.description || '',
-        body.status || false
+        body.status !== undefined ? body.status : false
       );
       ctx.response.body = newTicket;
       return;
